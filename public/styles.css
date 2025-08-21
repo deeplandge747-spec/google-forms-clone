@@ -1,0 +1,24 @@
+:root{
+  --bg:#f4f7fb; --card:#ffffff; --accent:#6c5ce7; --muted:#7b8ea3;
+}
+*{box-sizing:border-box;font-family:Inter,system-ui,Segoe UI,Arial;}
+body{margin:0;background:var(--bg);color:#102a43}
+.topbar{display:flex;justify-content:space-between;align-items:center;padding:12px 20px;background:linear-gradient(90deg,var(--accent),#00b8d9);color:white}
+.topbar h1{margin:0;font-size:18px}
+.topbar nav a{color:rgba(255,255,255,0.95);margin-left:12px;text-decoration:none}
+.container{max-width:980px;margin:20px auto;padding:0 16px}
+.hero{background:linear-gradient(180deg, rgba(255,255,255,0.6), transparent);padding:20px;border-radius:12px;margin-bottom:16px}
+.btn{background:var(--accent);color:white;padding:10px 14px;border-radius:8px;border:none;cursor:pointer;text-decoration:none;display:inline-block}
+.btn.ghost{background:transparent;border:1px solid rgba(0,0,0,0.08);color:var(--accent)}
+.btn.small{padding:6px 8px;font-size:13px;border-radius:6px}
+.card{background:var(--card);padding:16px;border-radius:10px;box-shadow:0 6px 18px rgba(16,42,67,0.06);margin-bottom:12px}
+.card-grid{display:grid;grid-template-columns:repeat(auto-fit, minmax(220px,1fr));gap:12px}
+.card .small{display:inline-block;margin-top:8px}
+label{display:block;margin-top:8px;font-size:14px}
+input[type="text"], input[type="search"], textarea, input{width:100%;padding:8px;border-radius:6px;border:1px solid #d6e0f0}
+.question{padding:10px;border-radius:8px;background:linear-gradient(180deg, rgba(108,92,231,0.04), transparent);margin-top:8px}
+.muted{color:var(--muted)}
+.q-actions{margin-top:8px}
+.card.small{padding:10px}
+.card.small canvas{width:100%;}
+.small{font-size:13px}

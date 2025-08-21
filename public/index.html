@@ -1,0 +1,58 @@
+<!doctype html>
+<html>
+<head>
+  <meta charset="utf-8" />
+  <title>Feedback & Voting — Home</title>
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <link rel="stylesheet" href="/styles.css">
+</head>
+<body>
+  <header class="topbar">
+    <h1>Feedback & Voting</h1>
+    <nav>
+      <a href="/dashboard.html">Dashboard</a>
+      <a href="/form.html">Create Form / Poll</a>
+    </nav>
+  </header>
+
+  <main class="container">
+    <section class="hero">
+      <h2>Create beautiful surveys & polls — fast</h2>
+      <p>No account needed. Build a form, share the link, collect responses, and view analytics.</p>
+      <div class="actions">
+        <a class="btn" href="/form.html">Create Form</a>
+        <a class="btn ghost" href="/dashboard.html">View Responses</a>
+      </div>
+    </section>
+
+    <section>
+      <h3>Available forms</h3>
+      <div id="formsList" class="card-grid"></div>
+    </section>
+  </main>
+
+  <script>
+    async function loadForms(){
+      const res = await fetch('/api/forms');
+      const forms = await res.json();
+      const container = document.getElementById('formsList');
+      container.innerHTML = '';
+      if(forms.length===0){
+        container.innerHTML = '<p class="muted">No forms yet — create one now.</p>';
+        return;
+      }
+      forms.forEach(f=>{
+        const el = document.createElement('div');
+        el.className='card';
+        el.innerHTML = `<h4>${f.title}</h4><p>${f.description||''}</p>
+          <div class="card-actions">
+            <a class="small" href="/form.html?open=${f.id}">Open</a>
+            <a class="small" href="/dashboard.html?id=${f.id}">Analytics</a>
+          </div>`;
+        container.appendChild(el);
+      });
+    }
+    loadForms();
+  </script>
+</body>
+</html>

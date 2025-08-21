@@ -1,0 +1,80 @@
+<!doctype html>
+<html>
+<head>
+  <meta charset="utf-8" />
+  <title>Dashboard</title>
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <link rel="stylesheet" href="/styles.css">
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+</head>
+<body>
+  <header class="topbar">
+    <h1>Analytics</h1>
+    <nav>
+      <a href="/">Home</a>
+      <a href="/form.html">Create Form</a>
+    </nav>
+  </header>
+
+  <main class="container">
+    <section class="card">
+      <h2>Form Analytics</h2>
+      <div id="selector"></div>
+      <div id="analyticsArea"></div>
+    </section>
+  </main>
+
+  <script>
+    async function loadForms(){
+      const res = await fetch('/api/forms');
+      const forms = await res.json();
+      const sel = document.getElementById('selector');
+      sel.innerHTML = '<select id="formsSelect"></select> <a class="btn small" id="openForm">Open Form</a>';
+      const select = document.getElementById('formsSelect');
+      forms.forEach(f=>{
+        const o = document.createElement('option'); o.value=f.id; o.innerText = f.title; select.appendChild(o);
+      });
+      const params = new URLSearchParams(location.search);
+      const id = params.get('id') || (forms[0] && forms[0].id);
+      if(id) select.value = id;
+      document.getElementById('openForm').onclick = ()=> showAnalytics(select.value);
+      if(id) showAnalytics(id);
+    }
+
+    async function showAnalytics(id){
+      const res = await fetch('/api/forms/'+id+'/analytics');
+      const d = await res.json();
+      const area = document.getElementById('analyticsArea');
+      area.innerHTML = `<h3>${d.questions[0] ? d.questions[0].label : 'Form'} — Total responses: ${d.total_responses}</h3>`;
+      // show per-question
+      d.questions.forEach((q, idx)=>{
+        const card = document.createElement('div');
+        card.className='card small';
+        if(q.type==='mcq'){
+          const canvas = document.createElement('canvas');
+          canvas.id = 'c'+idx;
+          card.appendChild(document.createElement('h4')).innerText = q.label || ('Q'+(idx+1));
+          card.appendChild(canvas);
+          area.appendChild(card);
+          const labels = Object.keys(d.aggregate[idx]);
+          const data = Object.values(d.aggregate[idx]);
+          new Chart(canvas.getContext('2d'), {
+            type: 'bar',
+            data: { labels, datasets: [{ label: 'Votes', data }] },
+            options: { responsive:true, maintainAspectRatio:false }
+          });
+          canvas.style.height='250px';
+        } else {
+          card.innerHTML = `<h4>${q.label || ('Q'+(idx+1))}</h4><p><strong>Text responses (${d.aggregate[idx].length}):</strong></p>`;
+          const ul = document.createElement('ul');
+          d.aggregate[idx].forEach(t => { const li=document.createElement('li'); li.innerText = t; ul.appendChild(li); });
+          card.appendChild(ul);
+          area.appendChild(card);
+        }
+      });
+    }
+
+    loadForms();
+  </script>
+</body>
+</html>

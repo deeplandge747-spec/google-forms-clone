@@ -1,0 +1,152 @@
+<!doctype html>
+<html>
+<head>
+  <meta charset="utf-8" />
+  <title>Create / Fill Form</title>
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <link rel="stylesheet" href="/styles.css">
+</head>
+<body>
+  <header class="topbar">
+    <h1>Forms</h1>
+    <nav>
+      <a href="/">Home</a>
+      <a href="/dashboard.html">Dashboard</a>
+    </nav>
+  </header>
+
+  <main class="container">
+    <section class="card">
+      <h2 id="pageTitle">Create Form</h2>
+
+      <div id="createArea">
+        <label>Title<input id="title" placeholder="Event feedback, Poll on X"/></label>
+        <label>Description<input id="description" placeholder="Short description (optional)"/></label>
+
+        <div id="questions"></div>
+
+        <div style="margin-top:8px;">
+          <button id="addText" class="btn small">Add Text Question</button>
+          <button id="addMCQ" class="btn small ghost">Add Multiple Choice</button>
+        </div>
+
+        <div style="margin-top:12px;">
+          <button id="saveForm" class="btn">Save Form</button>
+        </div>
+      </div>
+
+      <div id="fillArea" style="display:none;">
+        <h3 id="fillTitle"></h3>
+        <form id="responseForm"></form>
+      </div>
+    </section>
+  </main>
+
+  <script>
+    // tiny helper UI builder
+    function el(tag, attrs={}, inner=''){ const e=document.createElement(tag); Object.entries(attrs).forEach(([k,v])=>e.setAttribute(k,v)); e.innerHTML=inner; return e; }
+
+    const qs = document.getElementById('questions');
+    let questions = [];
+
+    function renderQuestions(){
+      qs.innerHTML='';
+      questions.forEach((q, idx)=>{
+        const div = document.createElement('div');
+        div.className='question';
+        let html = `<strong>Q${idx+1} — ${q.type.toUpperCase()}</strong>
+          <label>Question text<input class="qtext" data-idx="${idx}" value="${q.label||''}"/></label>`;
+        if(q.type==='mcq'){
+          html += '<div class="opts">';
+          (q.options||[]).forEach((o,i)=> html += `<div><input class="opt" data-idx="${idx}" data-opt="${i}" value="${o}"/><button data-action="delopt" data-idx="${idx}" data-opt="${i}">x</button></div>`);
+          html += `</div><button data-action="addopt" data-idx="${idx}" class="small">Add option</button>`;
+        }
+        html += `<div class="q-actions"><button data-action="up" data-idx="${idx}" class="small">↑</button> <button data-action="down" data-idx="${idx}" class="small">↓</button> <button data-action="del" data-idx="${idx}" class="small ghost">Delete</button></div>`;
+        div.innerHTML = html;
+        qs.appendChild(div);
+      });
+    }
+
+    document.getElementById('addText').onclick = ()=>{ questions.push({type:'text', label:''}); renderQuestions(); }
+    document.getElementById('addMCQ').onclick = ()=>{ questions.push({type:'mcq', label:'', options:['Option 1','Option 2']}); renderQuestions(); }
+
+    qs.addEventListener('click', (ev)=>{
+      const a = ev.target.getAttribute('data-action');
+      if(!a) return;
+      const idx = Number(ev.target.getAttribute('data-idx'));
+      if(a==='del'){ questions.splice(idx,1); renderQuestions(); }
+      if(a==='up' && idx>0){ const t=questions[idx-1]; questions[idx-1]=questions[idx]; questions[idx]=t; renderQuestions(); }
+      if(a==='down' && idx<questions.length-1){ const t=questions[idx+1]; questions[idx+1]=questions[idx]; questions[idx]=t; renderQuestions(); }
+      if(a==='addopt'){ questions[idx].options.push('New option'); renderQuestions(); }
+      if(a==='delopt'){ const opt = Number(ev.target.getAttribute('data-opt')); questions[idx].options.splice(opt,1); renderQuestions(); }
+    });
+
+    qs.addEventListener('input', (ev)=>{
+      if(ev.target.classList.contains('qtext')){ const idx=Number(ev.target.dataset.idx); questions[idx].label = ev.target.value; }
+      if(ev.target.classList.contains('opt')){ const idx=Number(ev.target.dataset.idx); const opt = Number(ev.target.dataset.opt); questions[idx].options[opt] = ev.target.value; }
+    });
+
+    document.getElementById('saveForm').onclick = async ()=>{
+      const title = document.getElementById('title').value.trim();
+      const description = document.getElementById('description').value.trim();
+      if(!title || questions.length===0){ alert('Please add title and at least one question'); return; }
+      const res = await fetch('/api/forms', {method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({title, description, questions})});
+      const data = await res.json();
+      if(data.id){ alert('Form saved! ID: '+data.id); window.location.href = '/dashboard.html?id='+data.id; }
+      else alert('Error saving form');
+    };
+
+    // if open param present, load form for filling
+    const params = new URLSearchParams(location.search);
+    const open = params.get('open');
+    if(open){
+      document.getElementById('createArea').style.display='none';
+      document.getElementById('fillArea').style.display='block';
+      fetch('/api/forms/'+open).then(r=>r.json()).then(f=>{
+        document.getElementById('pageTitle').innerText='Fill Form';
+        document.getElementById('fillTitle').innerText = f.title;
+        const form = document.getElementById('responseForm');
+        form.innerHTML='';
+        f.questions.forEach((q, idx)=>{
+          const wrapper = document.createElement('div');
+          wrapper.className='question';
+          const label = document.createElement('label');
+          label.innerHTML = `<strong>${q.label || ('Question '+(idx+1))}</strong>`;
+          wrapper.appendChild(label);
+          if(q.type==='text'){
+            const input = document.createElement('input');
+            input.name = 'q'+idx;
+            input.dataset.idx = idx;
+            wrapper.appendChild(input);
+          } else if(q.type==='mcq'){
+            q.options.forEach(opt=>{
+              const div = document.createElement('div');
+              div.innerHTML = `<label><input type="radio" name="q${idx}" value="${opt}"/> ${opt}</label>`;
+              wrapper.appendChild(div);
+            });
+          }
+          form.appendChild(wrapper);
+        });
+        const submit = document.createElement('button');
+        submit.type='button';
+        submit.className='btn';
+        submit.innerText='Submit Response';
+        submit.onclick = async ()=>{
+          const answers = {};
+          f.questions.forEach((q, idx)=>{
+            if(q.type==='text'){
+              answers[idx] = form.querySelector('[name=q'+idx+']')?.value || '';
+            } else {
+              answers[idx] = form.querySelector('[name=q'+idx+']:checked')?.value || '';
+            }
+          });
+          const r = await fetch('/api/forms/'+open+'/responses', {method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({answers})});
+          const dd = await r.json();
+          if(dd.response_id){ alert('Response recorded — thank you!'); window.location='/'; } else alert('Error');
+        };
+        form.appendChild(submit);
+      });
+    }
+  </script>
+</body>
+</html>
